@@ -28,10 +28,67 @@ async def get_download_link_from_mod_page(url: str):
                         return f"https://www.beamng.com{link}"  # Return the full URL
     return None
 
+
+@lru_cache(maxsize=100)
+async def extract_versions(url):
+    """Extract version details from the resource history table."""
+
+    versions = []
+    async with aiohttp.ClientSession() as session:
+        html = await fetch_page(session, url)
+        soup = BeautifulSoup(html, 'html.parser')
+
+        table = soup.find("table", class_="dataTable resourceHistory")
+        if table:
+            rows = table.find_all("tr", class_="dataRow")
+            for row in rows:
+                version = None
+                state = None
+                releaseDate = None
+                downloads = None
+                download_url = None
+
+                version_tag = row.find("td", class_="version")
+                if version_tag:
+                    version = version_tag.get_text(strip=True)
+
+                state_tag = row.find("td", class_="state")
+                if state_tag:
+                    state = state_tag.get_text(strip=True)
+
+                releaseDate_wrapper = row.find("td", class_="releaseDate")
+                if releaseDate_wrapper:
+                    releaseDate_tag = releaseDate_wrapper.find("span", class_="DateTime")
+                    if releaseDate_tag:
+                        releaseDate = releaseDate_tag.get_text(strip=True)
+
+                downloads_tag = row.find("td", class_="downloads")
+                if downloads_tag:
+                    downloads = downloads_tag.get_text(strip=True)
+
+                download_wrapper = row.find("td", class_="dataOptions download")
+                if download_wrapper:
+                    download_tag = download_wrapper.find("a", class_="secondaryContent")
+                    if download_tag:
+                        download = download_tag["href"]
+                        download_url = f"https://www.beamng.com{download}"
+
+                mod_version = {
+                    "version": version if version else "N/A",
+                    "state": state if state else "N/A",
+                    "release_date": releaseDate if releaseDate else "N/A",
+                    "downloads": downloads if downloads else "N/A",
+                    "download_url": download_url if download_url else "N/A"
+                }
+
+                versions.append(mod_version)
+
+    return versions
+
+
 # Async function for scraping the resources page
-async def last_updated():
-    #query = "https://www.beamng.com/resources/"
-    query = "https://www.beamng.com/resources/?order=resource_date"
+async def frontpages(query):
+
     results = []
 
     ### Use AIOHTTP for concurrent HTTP Requests ###
@@ -156,6 +213,7 @@ async def last_updated():
             print(f"    - Number of Downloads: {downloads}")
             print(f"    - Number of Subscriptions: {subscriptions}")
             print(f"    - Last Updated: {last_updated_a}\n")
+            print(await extract_versions(f"https://www.beamng.com/{mod_page_link}"))
 
             scrapables = {
                 "title": title,
@@ -171,7 +229,8 @@ async def last_updated():
                 "ratings": number_of_ratings,
                 "downloads": downloads,
                 "subscriptions": subscriptions,
-                "last_updated": last_updated_a
+                "last_updated": last_updated_a,
+                "version_downloads": await extract_versions(f"https://www.beamng.com/{mod_page_link}/historyImproved")
             }
 
             results.append(scrapables)
@@ -180,7 +239,16 @@ async def last_updated():
 
 # Run the async loop
 async def main():
-    results = await last_updated()
+
+    PAGE_NUMBER = 1
+
+    LAST_UPDATED_PAGE = f"https://www.beamng.com/resources/?page={PAGE_NUMBER}"
+    SUBMISSION_DATE_PAGE = f"https://www.beamng.com/resources/?page={PAGE_NUMBER}?order=resource_date"
+    RATING_PAGE = f"https://www.beamng.com/resources/?page={PAGE_NUMBER}?order=rating_weighted"
+    DOWNLOADS_PAGE = f"https://www.beamng.com/resources/?page={PAGE_NUMBER}?order=download_count"
+    TITLE_PAGE = f"https://www.beamng.com/resources/?page={PAGE_NUMBER}?order=title"
+
+    results = await frontpages(RATING_PAGE)
     # Further processing or storing of `results` can be done here
     return results
 
