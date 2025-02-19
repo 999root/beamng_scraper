@@ -29,8 +29,9 @@ async def get_download_link_from_mod_page(url: str):
     return None
 
 # Async function for scraping the resources page
-async def get_all_pages():
-    query = "https://www.beamng.com/resources/"
+async def last_updated():
+    #query = "https://www.beamng.com/resources/"
+    query = "https://www.beamng.com/resources/?order=resource_date"
     results = []
 
     ### Use AIOHTTP for concurrent HTTP Requests ###
@@ -179,7 +180,7 @@ async def get_all_pages():
 
 # Run the async loop
 async def main():
-    results = await get_all_pages()
+    results = await last_updated()
     # Further processing or storing of `results` can be done here
     return results
 
