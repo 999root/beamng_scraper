@@ -54,7 +54,7 @@ def extract_versions(url):
             if download_wrapper:
                 download_tag = download_wrapper.find("a", class_="secondaryContent")
                 if download_tag:
-                    download_url = f"https://www.beamng.com{download_tag['href']}"
+                    download_url = f"https://www.beamng.com/{download_tag['href']}"
 
             mod_version = {
                 "version": version_tag.get_text(strip=True) if version_tag else "N/A",
